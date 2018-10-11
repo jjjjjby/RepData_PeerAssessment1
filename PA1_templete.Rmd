@@ -1,0 +1,106 @@
+Course Project
+==============
+This is how I complete this project.
+
+1. Loading and preprocessing the data
+```{r}
+activity<-read.csv("C:/Users/AAA/Documents/R/activity.csv",colClasses = c("numeric","Date","numeric"))
+```
+
+2. The mean total number of steps taken per day.
+
+(1). Calculate the total number of steps taken per day
+```{r}
+library(dplyr)
+total_steps<-group_by(activity,date)
+total_steps<-summarise(total_steps,sum=sum(steps))
+total_steps<-subset(total_steps,!is.na(sum))
+head(total_steps)
+```
+
+(2). The histogram of the total number of steps taken each day
+```{r}
+hist(total_steps$sum,main="Total Steps",xlab="Steps")
+```
+
+(3). The mean and median of the total number of steps taken per day
+```{r results='hide'}
+mean<-mean(total_steps$sum)
+median<-median(total_steps$sum)
+```
+
+The mean is `r mean`. The median is `r median`.
+
+3. The average daily activity pattern
+
+(1). Time series plot 
+```{r}
+five_minute<-group_by(activity,interval)
+five_minute<-summarise(five_minute,ave=sum(steps,na.rm = T)/length(unique(activity$date)))
+plot(five_minute,type="l",main="Time series plot")
+```
+
+(2). The maximum number of steps in 5-minute interval
+```{r,results='hide'}
+max<-as.numeric(five_minute[with(five_minute,which.max(ave)),1])
+```
+
+ The maximum number of steps is in `r max`.
+ 
+ 4. Imputing missing values
+ (1). The total number of missing values in the dataset 
+ ```{r,results='hide'}
+ missing<-sum(is.na(activity$steps))
+ ```
+ The total number of missing values in the dataset is `r missing`.
+ 
+ (2). Filling in all of the missing values in the dataset
+```{r}
+nas<-which(is.na(activity$steps))
+na_replaced<-activity
+for (i in nas){
+        num<-which(five_minute$interval==na_replaced$interval[i])
+        na_replaced$steps[i]<-five_minute$ave[num]
+}
+```
+
+(3). The new dataset
+```{r}
+head(na_replaced)
+```
+
+(4). Histogram, mean, and median
+```{r}
+total_steps_new<-group_by(na_replaced,date)
+total_steps_new<-summarise(total_steps_new,sum=sum(steps))
+hist(total_steps_new$sum,main="Total Steps",xlab="Steps")
+```
+```{r,results='hide'}
+mn<-mean(total_steps_new$sum)
+md<-median(total_steps_new$sum)
+```
+The mean is `r mean`. The median is `r median`.
+
+5. Activity patterns between weekdays and weekends
+
+(1). Create a new factor variable in the dataset indicating whether a given date is a weekday or weekend day
+```{r}
+Sys.setlocale(category = "LC_ALL", locale = "english")
+weekdata<-mutate(na_replaced,week=weekdays(na_replaced$date))
+for (i in 1:nrow(weekdata)){
+        if (weekdata$week[i]=="Saturday"|weekdata$week[i]=="Sunday"){
+                weekdata$week[i]<-"weekend"
+        }
+        else weekdata$week[i]<-"weekday"
+}
+weekdata$week<-as.factor(weekdata$week)
+```
+
+(2). Panel plot
+```{r}
+week<-group_by(weekdata,interval,week)
+total_week<-summarise(week,sum=mean(steps))
+library(ggplot2)
+g<-ggplot(total_week,aes(interval,sum))
+g+geom_line()+facet_grid(week~.)
+```
